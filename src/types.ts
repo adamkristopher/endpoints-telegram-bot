@@ -1,7 +1,9 @@
-import type { Context, SessionFlavor } from 'grammy';
+import type { Context } from 'grammy';
+import type { FileFlavor } from '@grammyjs/files';
+import type { ParseModeFlavor } from '@grammyjs/parse-mode';
 
 /**
- * User session data persisted across bot restarts
+ * User session data persisted in SQLite (not grammY sessions)
  */
 export interface UserSession {
   /** Endpoints API key */
@@ -13,9 +15,9 @@ export interface UserSession {
 }
 
 /**
- * Custom context with session data
+ * Custom context with file and parse mode flavors
  */
-export type BotContext = Context & SessionFlavor<UserSession>;
+export type BotContext = FileFlavor<ParseModeFlavor<Context>>;
 
 /**
  * Parsed message result from user input

@@ -151,8 +151,27 @@ CMD ["npm", "start"]
 | `ENDPOINTS_API_URL` | No | `https://endpoints.work` | Endpoints API URL |
 | `DATABASE_PATH` | No | `./data/bot.sqlite` | SQLite database path |
 | `WEBHOOK_URL` | No | - | Webhook URL (enables webhook mode) |
+| `WEBHOOK_SECRET` | No | - | Secret token for webhook verification |
 | `PORT` | No | `3000` | Server port for webhook mode |
 | `ENCRYPTION_KEY` | No | Bot token | Key for encrypting stored API keys |
+
+## Production Features
+
+This bot uses grammY plugins for production reliability:
+
+| Plugin | Purpose |
+|--------|---------|
+| `@grammyjs/auto-retry` | Automatically retries failed API requests with exponential backoff |
+| `@grammyjs/transformer-throttler` | Prevents hitting Telegram's rate limits |
+| `@grammyjs/files` | Simplifies file downloads from Telegram |
+| `@grammyjs/parse-mode` | Sets default Markdown formatting for all messages |
+| `@grammyjs/hydrate` | Provides convenient context methods |
+
+The bot also includes:
+- Proper error differentiation (GrammyError vs HttpError vs unknown)
+- Health check endpoint at `/health` for monitoring
+- Graceful shutdown handling
+- Webhook secret token verification
 
 ## Security
 

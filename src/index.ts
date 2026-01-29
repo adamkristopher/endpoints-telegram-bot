@@ -14,10 +14,11 @@ const bot = createBot(token);
 // Start bot based on mode
 const webhookUrl = process.env.WEBHOOK_URL;
 const port = parseInt(process.env.PORT || '3000', 10);
+const secretToken = process.env.WEBHOOK_SECRET;
 
 if (webhookUrl) {
   // Production: webhook mode
-  startWebhook(bot, webhookUrl, port).catch((err) => {
+  startWebhook(bot, webhookUrl, port, secretToken).catch((err) => {
     console.error('Failed to start webhook:', err);
     process.exit(1);
   });

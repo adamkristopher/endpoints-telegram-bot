@@ -20,7 +20,7 @@ export async function handleDocument(ctx: BotContext): Promise<void> {
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -42,9 +42,9 @@ export async function handleDocument(ctx: BotContext): Promise<void> {
   }
 
   if (!prompt) {
-    await ctx.reply('⚠️ Please include a caption with your file (e.g., "job tracker") or set a prompt first with `scan: category`', {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply(
+      '⚠️ Please include a caption with your file (e.g., "job tracker") or set a prompt first with `scan: category`'
+    );
     return;
   }
 
@@ -52,16 +52,10 @@ export async function handleDocument(ctx: BotContext): Promise<void> {
   await ctx.replyWithChatAction('upload_document');
 
   try {
-    // Download file from Telegram
-    const file = await ctx.api.getFile(document.file_id);
-    const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+    // Download file using grammY's file helper (handles URL construction automatically)
+    const file = await ctx.getFile();
+    const buffer = Buffer.from(await file.download());
 
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      throw new Error('Failed to download file from Telegram');
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
     const filename = document.file_name || 'document';
     const mimeType = document.mime_type || 'application/octet-stream';
 
@@ -69,12 +63,10 @@ export async function handleDocument(ctx: BotContext): Promise<void> {
     const result = await scanFile(apiKey, prompt, buffer, filename, mimeType);
 
     const message = formatScanResult(result);
-    const keyboard = result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
+    const keyboard =
+      result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
 
-    await ctx.reply(message, {
-      parse_mode: 'Markdown',
-      reply_markup: keyboard,
-    });
+    await ctx.reply(message, { reply_markup: keyboard });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     await ctx.reply(`❌ Failed to process file: ${errorMessage}`);
@@ -93,7 +85,7 @@ export async function handlePhoto(ctx: BotContext): Promise<void> {
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -118,9 +110,9 @@ export async function handlePhoto(ctx: BotContext): Promise<void> {
   }
 
   if (!prompt) {
-    await ctx.reply('⚠️ Please include a caption with your photo (e.g., "receipts") or set a prompt first with `scan: category`', {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply(
+      '⚠️ Please include a caption with your photo (e.g., "receipts") or set a prompt first with `scan: category`'
+    );
     return;
   }
 
@@ -128,11 +120,12 @@ export async function handlePhoto(ctx: BotContext): Promise<void> {
   await ctx.replyWithChatAction('upload_photo');
 
   try {
-    // Download photo from Telegram
+    // Download largest photo using grammY's file helper
+    // For photos, we need to get the file directly since ctx.getFile() works on documents
     const file = await ctx.api.getFile(photo.file_id);
-    const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-
+    const fileUrl = file.getUrl();
     const response = await fetch(fileUrl);
+
     if (!response.ok) {
       throw new Error('Failed to download photo from Telegram');
     }
@@ -145,12 +138,10 @@ export async function handlePhoto(ctx: BotContext): Promise<void> {
     const result = await scanFile(apiKey, prompt, buffer, filename, mimeType);
 
     const message = formatScanResult(result);
-    const keyboard = result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
+    const keyboard =
+      result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
 
-    await ctx.reply(message, {
-      parse_mode: 'Markdown',
-      reply_markup: keyboard,
-    });
+    await ctx.reply(message, { reply_markup: keyboard });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     await ctx.reply(`❌ Failed to process photo: ${errorMessage}`);

@@ -17,7 +17,6 @@ import { getStats, listEndpoints, validateApiKey } from '../services/endpoints-a
  */
 export async function handleStart(ctx: BotContext): Promise<void> {
   await ctx.reply(formatWelcome(), {
-    parse_mode: 'Markdown',
     reply_markup: welcomeKeyboard(),
   });
 }
@@ -26,9 +25,7 @@ export async function handleStart(ctx: BotContext): Promise<void> {
  * Handle /help command
  */
 export async function handleHelp(ctx: BotContext): Promise<void> {
-  await ctx.reply(formatHelp(), {
-    parse_mode: 'Markdown',
-  });
+  await ctx.reply(formatHelp());
 }
 
 /**
@@ -47,14 +44,13 @@ export async function handleSetup(ctx: BotContext): Promise<void> {
 
   const existing = await hasApiKey(userId);
   if (existing) {
-    await ctx.reply('🔑 You already have an API key configured.\n\nSend me a new key to update it, or use /status to check your connection.', {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply(
+      '🔑 You already have an API key configured.\n\nSend me a new key to update it, or use /status to check your connection.'
+    );
     return;
   }
 
   await ctx.reply(formatApiKeyPrompt(), {
-    parse_mode: 'Markdown',
     reply_markup: setupKeyboard(),
   });
 }
@@ -68,9 +64,7 @@ export async function handleList(ctx: BotContext): Promise<void> {
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -82,7 +76,6 @@ export async function handleList(ctx: BotContext): Promise<void> {
   const keyboard = endpoints.length > 0 ? endpointsListKeyboard(endpoints) : undefined;
 
   await ctx.reply(message, {
-    parse_mode: 'Markdown',
     reply_markup: keyboard,
   });
 }
@@ -96,9 +89,7 @@ export async function handleStatus(ctx: BotContext): Promise<void> {
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -106,9 +97,7 @@ export async function handleStatus(ctx: BotContext): Promise<void> {
   await ctx.replyWithChatAction('typing');
 
   const stats = await getStats(apiKey);
-  await ctx.reply(formatStats(stats), {
-    parse_mode: 'Markdown',
-  });
+  await ctx.reply(formatStats(stats));
 }
 
 /**
@@ -143,7 +132,6 @@ export async function handleApiKeyInput(ctx: BotContext, text: string): Promise<
   await setApiKey(userId, text);
 
   await ctx.reply(formatApiKeySaved(), {
-    parse_mode: 'Markdown',
     reply_markup: apiKeySavedKeyboard(),
   });
 

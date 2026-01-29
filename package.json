@@ -24,6 +24,11 @@
     "url": "https://github.com/adamkristopher/endpoints-telegram-bot.git"
   },
   "dependencies": {
+    "@grammyjs/auto-retry": "^2.0.2",
+    "@grammyjs/files": "^1.1.1",
+    "@grammyjs/hydrate": "^1.4.1",
+    "@grammyjs/parse-mode": "^1.10.0",
+    "@grammyjs/transformer-throttler": "^1.2.1",
     "@keyv/sqlite": "^3.6.7",
     "dotenv": "^16.3.1",
     "grammy": "^1.21.0",

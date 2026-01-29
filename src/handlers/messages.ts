@@ -9,10 +9,15 @@ import {
   formatStats,
   formatEndpointsList,
 } from '../utils/formatters.js';
-import { errorHelpKeyboard, scanSuccessKeyboard, endpointDetailKeyboard, endpointsListKeyboard } from '../utils/keyboards.js';
+import {
+  errorHelpKeyboard,
+  scanSuccessKeyboard,
+  endpointDetailKeyboard,
+  endpointsListKeyboard,
+} from '../utils/keyboards.js';
 import { getApiKey, setLastPrompt, getLastPrompt } from '../services/state.js';
 import { scanText, getEndpoint, listEndpoints, getStats } from '../services/endpoints-api.js';
-import { handleApiKeyInput, handleHelp, handleList, handleStatus } from './commands.js';
+import { handleApiKeyInput } from './commands.js';
 
 /**
  * Handle text messages
@@ -68,7 +73,7 @@ async function handleListMessage(ctx: BotContext): Promise<void> {
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -78,10 +83,7 @@ async function handleListMessage(ctx: BotContext): Promise<void> {
   const message = formatEndpointsList(endpoints);
   const keyboard = endpoints.length > 0 ? endpointsListKeyboard(endpoints) : undefined;
 
-  await ctx.reply(message, {
-    parse_mode: 'Markdown',
-    reply_markup: keyboard,
-  });
+  await ctx.reply(message, { reply_markup: keyboard });
 }
 
 /**
@@ -93,7 +95,7 @@ async function handleScanMessage(ctx: BotContext, prompt: string, content?: stri
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -103,9 +105,7 @@ async function handleScanMessage(ctx: BotContext, prompt: string, content?: stri
 
   // If no content provided, just confirm prompt was set
   if (!content) {
-    await ctx.reply(`✅ Prompt set to: *${sanitizedPrompt}*\n\nNow send me text or a file to scan.`, {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply(`✅ Prompt set to: *${sanitizedPrompt}*\n\nNow send me text or a file to scan.`);
     return;
   }
 
@@ -116,12 +116,10 @@ async function handleScanMessage(ctx: BotContext, prompt: string, content?: stri
   const result = await scanText(apiKey, sanitizedPrompt, sanitizedContent);
 
   const message = formatScanResult(result);
-  const keyboard = result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
+  const keyboard =
+    result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
 
-  await ctx.reply(message, {
-    parse_mode: 'Markdown',
-    reply_markup: keyboard,
-  });
+  await ctx.reply(message, { reply_markup: keyboard });
 }
 
 /**
@@ -133,15 +131,13 @@ async function handleTextScanMessage(ctx: BotContext, content: string): Promise<
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
   const prompt = await getLastPrompt(userId);
   if (!prompt) {
-    await ctx.reply('⚠️ No prompt set. Use `scan: category` first to set a prompt.', {
-      parse_mode: 'Markdown',
-    });
+    await ctx.reply('⚠️ No prompt set. Use `scan: category` first to set a prompt.');
     return;
   }
 
@@ -151,12 +147,10 @@ async function handleTextScanMessage(ctx: BotContext, content: string): Promise<
   const result = await scanText(apiKey, prompt, sanitizedContent);
 
   const message = formatScanResult(result);
-  const keyboard = result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
+  const keyboard =
+    result.success && result.endpoint ? scanSuccessKeyboard(result.endpoint.path) : errorHelpKeyboard();
 
-  await ctx.reply(message, {
-    parse_mode: 'Markdown',
-    reply_markup: keyboard,
-  });
+  await ctx.reply(message, { reply_markup: keyboard });
 }
 
 /**
@@ -168,7 +162,7 @@ async function handleGetMessage(ctx: BotContext, path: string): Promise<void> {
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
@@ -178,10 +172,7 @@ async function handleGetMessage(ctx: BotContext, path: string): Promise<void> {
   const message = formatEndpointData(result);
   const keyboard = result.success ? endpointDetailKeyboard(path) : errorHelpKeyboard();
 
-  await ctx.reply(message, {
-    parse_mode: 'Markdown',
-    reply_markup: keyboard,
-  });
+  await ctx.reply(message, { reply_markup: keyboard });
 }
 
 /**
@@ -193,24 +184,19 @@ async function handleFileGetMessage(ctx: BotContext, path: string): Promise<void
 
   const apiKey = await getApiKey(userId);
   if (!apiKey) {
-    await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatMissingApiKey());
     return;
   }
 
   // TODO: Implement file download from Endpoints API
-  await ctx.reply('📁 File download coming soon!\n\nFor now, view files at: endpoints.work' + path, {
-    parse_mode: 'Markdown',
-  });
+  await ctx.reply('📁 File download coming soon!\n\nFor now, view files at: endpoints.work' + path);
 }
 
 /**
  * Handle unknown message format
  */
 async function handleUnknownMessage(ctx: BotContext): Promise<void> {
-  await ctx.reply(formatUnknownCommand(), {
-    parse_mode: 'Markdown',
-    reply_markup: errorHelpKeyboard(),
-  });
+  await ctx.reply(formatUnknownCommand(), { reply_markup: errorHelpKeyboard() });
 }
 
 /**
@@ -228,31 +214,30 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
 
   // Parse callback data
   if (data === 'help') {
-    await ctx.reply(formatHelp(), { parse_mode: 'Markdown' });
+    await ctx.reply(formatHelp());
   } else if (data === 'setup' || data === 'setup_ready') {
     // Trigger setup flow
-    const message = '🔑 Please send me your Endpoints API key now.\n\nGet one at: endpoints.work/api-keys';
-    await ctx.reply(message, { parse_mode: 'Markdown' });
+    await ctx.reply('🔑 Please send me your Endpoints API key now.\n\nGet one at: endpoints.work/api-keys');
   } else if (data === 'status') {
     const apiKey = await getApiKey(userId);
     if (!apiKey) {
-      await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+      await ctx.reply(formatMissingApiKey());
       return;
     }
     await ctx.replyWithChatAction('typing');
     const stats = await getStats(apiKey);
-    await ctx.reply(formatStats(stats), { parse_mode: 'Markdown' });
+    await ctx.reply(formatStats(stats));
   } else if (data === 'list') {
     const apiKey = await getApiKey(userId);
     if (!apiKey) {
-      await ctx.reply(formatMissingApiKey(), { parse_mode: 'Markdown' });
+      await ctx.reply(formatMissingApiKey());
       return;
     }
     await ctx.replyWithChatAction('typing');
     const endpoints = await listEndpoints(apiKey);
     const message = formatEndpointsList(endpoints);
     const keyboard = endpoints.length > 0 ? endpointsListKeyboard(endpoints) : undefined;
-    await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: keyboard });
+    await ctx.reply(message, { reply_markup: keyboard });
   } else if (data.startsWith('get:')) {
     const path = data.slice(4);
     await handleGetMessage(ctx, path);
