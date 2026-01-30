@@ -37,25 +37,31 @@ export async function scanText(
   text: string
 ): Promise<ScanResult> {
   try {
+    const formData = new FormData();
+    formData.append('prompt', prompt);
+    formData.append('texts', text);
+
     const result = await apiRequest<{
       endpoint: { path: string; category: string; slug: string };
-      item: { id: string; title: string; entities: Record<string, unknown> };
+      entriesAdded: number;
+      metadata: { newMetadata: Record<string, unknown> };
     }>(apiKey, '/api/scan', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt,
-        content: text,
-        type: 'text',
-      }),
+      body: formData,
     });
+
+    // Extract first item from newMetadata
+    const itemId = Object.keys(result.metadata?.newMetadata || {})[0];
+    const itemData = itemId ? result.metadata.newMetadata[itemId] as Record<string, unknown> : null;
 
     return {
       success: true,
       endpoint: result.endpoint,
-      item: result.item,
+      item: itemData ? {
+        id: itemId,
+        title: (itemData.summary as string) || 'Scanned item',
+        entities: itemData.entities as Record<string, unknown> || {},
+      } : undefined,
     };
   } catch (error) {
     return {
@@ -78,20 +84,29 @@ export async function scanFile(
   try {
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('file', new Blob([fileBuffer], { type: mimeType }), filename);
+    formData.append('files', new Blob([fileBuffer], { type: mimeType }), filename);
 
     const result = await apiRequest<{
       endpoint: { path: string; category: string; slug: string };
-      item: { id: string; title: string; entities: Record<string, unknown> };
+      entriesAdded: number;
+      metadata: { newMetadata: Record<string, unknown> };
     }>(apiKey, '/api/scan', {
       method: 'POST',
       body: formData,
     });
 
+    // Extract first item from newMetadata
+    const itemId = Object.keys(result.metadata?.newMetadata || {})[0];
+    const itemData = itemId ? result.metadata.newMetadata[itemId] as Record<string, unknown> : null;
+
     return {
       success: true,
       endpoint: result.endpoint,
-      item: result.item,
+      item: itemData ? {
+        id: itemId,
+        title: (itemData.summary as string) || 'Scanned item',
+        entities: itemData.entities as Record<string, unknown> || {},
+      } : undefined,
     };
   } catch (error) {
     return {
@@ -107,10 +122,25 @@ export async function scanFile(
 export async function listEndpoints(apiKey: string): Promise<EndpointListItem[]> {
   try {
     const result = await apiRequest<{
-      endpoints: EndpointListItem[];
-    }>(apiKey, '/api/endpoints');
+      categories: Array<{
+        name: string;
+        endpoints: Array<{ id: number; path: string; slug: string; itemCount?: number }>;
+      }>;
+    }>(apiKey, '/api/endpoints/tree');
 
-    return result.endpoints || [];
+    // Flatten categories into endpoint list
+    const endpoints: EndpointListItem[] = [];
+    for (const category of result.categories || []) {
+      for (const ep of category.endpoints || []) {
+        endpoints.push({
+          path: ep.path,
+          category: category.name,
+          slug: ep.slug,
+          itemCount: ep.itemCount || 0,
+        });
+      }
+    }
+    return endpoints;
   } catch {
     return [];
   }
@@ -121,23 +151,39 @@ export async function listEndpoints(apiKey: string): Promise<EndpointListItem[]>
  */
 export async function getEndpoint(apiKey: string, path: string): Promise<EndpointDataResult> {
   try {
-    // Ensure path starts with /api
-    const apiPath = path.startsWith('/api') ? path : `/api${path}`;
+    // Normalize path: /category/slug -> /api/endpoints/category/slug
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const apiPath = `/api/endpoints${cleanPath}`;
 
     const result = await apiRequest<{
-      path: string;
-      items: Array<{
-        id: string;
-        title: string;
-        createdAt: string;
-        entities: Record<string, unknown>;
-      }>;
+      endpoint: { id: number; path: string; category: string; slug: string };
+      metadata: {
+        oldMetadata: Record<string, unknown>;
+        newMetadata: Record<string, unknown>;
+      };
       totalItems: number;
     }>(apiKey, apiPath);
 
+    // Convert metadata to items array
+    const items: Array<{ id: string; title: string; createdAt: string; entities: Record<string, unknown> }> = [];
+    const allMetadata = { ...result.metadata?.oldMetadata, ...result.metadata?.newMetadata };
+    for (const [id, data] of Object.entries(allMetadata)) {
+      const itemData = data as Record<string, unknown>;
+      items.push({
+        id,
+        title: (itemData.summary as string) || 'Item',
+        createdAt: (itemData.createdAt as string) || '',
+        entities: (itemData.entities as Record<string, unknown>) || {},
+      });
+    }
+
     return {
       success: true,
-      data: result,
+      data: {
+        path: result.endpoint?.path || path,
+        items,
+        totalItems: result.totalItems || items.length,
+      },
     };
   } catch (error) {
     return {
@@ -153,14 +199,24 @@ export async function getEndpoint(apiKey: string, path: string): Promise<Endpoin
 export async function getStats(apiKey: string): Promise<StatsResult> {
   try {
     const result = await apiRequest<{
-      parsesThisMonth: number;
-      parseLimit: number;
       tier: string;
-    }>(apiKey, '/api/user/stats');
+      parsesUsed: number;
+      parsesLimit: number;
+      storageUsed: number;
+      storageLimit: number;
+      billingPeriodStart: string;
+      billingPeriodEnd: string;
+    }>(apiKey, '/api/billing/stats');
 
     return {
       success: true,
-      usage: result,
+      usage: {
+        parsesThisMonth: result.parsesUsed,
+        parseLimit: result.parsesLimit,
+        tier: result.tier,
+        storageUsed: result.storageUsed,
+        storageLimit: result.storageLimit,
+      },
     };
   } catch (error) {
     return {
@@ -175,7 +231,8 @@ export async function getStats(apiKey: string): Promise<StatsResult> {
  */
 export async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
-    await apiRequest(apiKey, '/api/user/stats');
+    // Use endpoints/tree since billing/stats may require session auth
+    await apiRequest(apiKey, '/api/endpoints/tree');
     return true;
   } catch {
     return false;

@@ -55,7 +55,7 @@ export interface EndpointListItem {
   category: string;
   slug: string;
   itemCount: number;
-  lastUpdated: string;
+  lastUpdated?: string;
 }
 
 /**
@@ -67,6 +67,8 @@ export interface StatsResult {
     parsesThisMonth: number;
     parseLimit: number;
     tier: string;
+    storageUsed?: number;
+    storageLimit?: number;
   };
   error?: string;
 }
