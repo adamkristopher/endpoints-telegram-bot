@@ -99,3 +99,13 @@ export function scanSuccessKeyboard(path: string): InlineKeyboard {
 export function confirmKeyboard(action: string): InlineKeyboard {
   return new InlineKeyboard().text('✅ Confirm', `confirm:${action}`).text('❌ Cancel', 'cancel');
 }
+
+/**
+ * OpenClaw transcript confirmation keyboard
+ */
+export function openclawConfirmKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text('✅ Yes, OpenClaw transcript', 'openclaw:yes')
+    .row()
+    .text('📄 No, regular file', 'openclaw:no');
+}

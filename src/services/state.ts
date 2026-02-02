@@ -1,6 +1,6 @@
 import Keyv from 'keyv';
 import KeyvSqlite from '@keyv/sqlite';
-import type { UserSession } from '../types.js';
+import type { UserSession, PendingFile } from '../types.js';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 const DATABASE_PATH = process.env.DATABASE_PATH || './data/bot.sqlite';
@@ -137,4 +137,21 @@ export async function clearSession(userId: number): Promise<void> {
 export async function hasApiKey(userId: number): Promise<boolean> {
   const session = await getSession(userId);
   return !!session.apiKey;
+}
+
+/**
+ * Store pending file for OpenClaw confirmation
+ */
+export async function setPendingFile(userId: number, file: PendingFile): Promise<void> {
+  await keyv.set(`pending:${userId}`, file);
+}
+
+/**
+ * Get and clear pending file
+ */
+export async function getPendingFile(userId: number): Promise<PendingFile | null> {
+  const data = await keyv.get(`pending:${userId}`) as PendingFile | undefined;
+  if (!data) return null;
+  await keyv.delete(`pending:${userId}`);
+  return data;
 }

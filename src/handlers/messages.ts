@@ -15,8 +15,8 @@ import {
   endpointDetailKeyboard,
   endpointsListKeyboard,
 } from '../utils/keyboards.js';
-import { getApiKey, setLastPrompt, getLastPrompt } from '../services/state.js';
-import { scanText, getEndpoint, listEndpoints, getStats } from '../services/endpoints-api.js';
+import { getApiKey, setLastPrompt, getLastPrompt, getPendingFile } from '../services/state.js';
+import { scanText, getEndpoint, listEndpoints, getStats, scanFile } from '../services/endpoints-api.js';
 import { handleApiKeyInput } from './commands.js';
 
 /**
@@ -248,5 +248,38 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     await ctx.reply('🌐 View all endpoints at: endpoints.work/dashboard');
   } else if (data === 'cancel') {
     await ctx.reply('Cancelled.');
+  } else if (data.startsWith('openclaw:')) {
+    const isOpenClaw = data === 'openclaw:yes';
+
+    const pendingFile = await getPendingFile(userId);
+    if (!pendingFile) {
+      await ctx.reply('⚠️ File expired. Please upload again.');
+      return;
+    }
+
+    const apiKey = await getApiKey(userId);
+    if (!apiKey) {
+      await ctx.reply(formatMissingApiKey());
+      return;
+    }
+
+    await ctx.replyWithChatAction('upload_document');
+
+    const buffer = Buffer.from(pendingFile.buffer, 'base64');
+    const result = await scanFile(
+      apiKey,
+      pendingFile.prompt,
+      buffer,
+      pendingFile.filename,
+      pendingFile.mimeType,
+      { isClawdbotTranscript: isOpenClaw }
+    );
+
+    const message = formatScanResult(result);
+    const keyboard = result.success && result.endpoint
+      ? scanSuccessKeyboard(result.endpoint.path)
+      : errorHelpKeyboard();
+
+    await ctx.reply(message, { reply_markup: keyboard });
   }
 }

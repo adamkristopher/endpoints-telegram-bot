@@ -72,6 +72,13 @@ export async function scanText(
 }
 
 /**
+ * Options for scanning files
+ */
+export interface ScanFileOptions {
+  isClawdbotTranscript?: boolean;
+}
+
+/**
  * Scan file content
  */
 export async function scanFile(
@@ -79,12 +86,18 @@ export async function scanFile(
   prompt: string,
   fileBuffer: Buffer,
   filename: string,
-  mimeType: string
+  mimeType: string,
+  options?: ScanFileOptions
 ): Promise<ScanResult> {
   try {
     const formData = new FormData();
     formData.append('prompt', prompt);
     formData.append('files', new Blob([fileBuffer], { type: mimeType }), filename);
+
+    // Add OpenClaw flag if set
+    if (options?.isClawdbotTranscript) {
+      formData.append('isClawdbotTranscript', 'true');
+    }
 
     const result = await apiRequest<{
       endpoint: { path: string; category: string; slug: string };

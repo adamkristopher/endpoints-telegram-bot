@@ -90,3 +90,14 @@ export interface EndpointDataResult {
   };
   error?: string;
 }
+
+/**
+ * Pending file awaiting OpenClaw confirmation
+ */
+export interface PendingFile {
+  buffer: string;      // Base64 encoded buffer (SQLite can't store Buffer)
+  filename: string;
+  mimeType: string;
+  prompt: string;
+  timestamp: number;   // For cleanup of stale pending files
+}

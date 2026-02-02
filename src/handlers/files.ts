@@ -1,8 +1,8 @@
 import type { BotContext } from '../types.js';
 import { isFileCaption, sanitize } from '../utils/parser.js';
 import { formatScanResult, formatMissingApiKey } from '../utils/formatters.js';
-import { scanSuccessKeyboard, errorHelpKeyboard } from '../utils/keyboards.js';
-import { getApiKey, getLastPrompt, setLastPrompt } from '../services/state.js';
+import { scanSuccessKeyboard, errorHelpKeyboard, openclawConfirmKeyboard } from '../utils/keyboards.js';
+import { getApiKey, getLastPrompt, setLastPrompt, setPendingFile } from '../services/state.js';
 import { scanFile } from '../services/endpoints-api.js';
 
 // Maximum file size in bytes (10MB to match Endpoints limit)
@@ -58,6 +58,30 @@ export async function handleDocument(ctx: BotContext): Promise<void> {
 
     const filename = document.file_name || 'document';
     const mimeType = document.mime_type || 'application/octet-stream';
+
+    // Check if JSONL file - may be an OpenClaw transcript
+    const isJsonl = filename.endsWith('.jsonl') ||
+                    mimeType === 'application/jsonl' ||
+                    mimeType === 'application/x-ndjson';
+
+    if (isJsonl) {
+      // Store pending file and ask user
+      await setPendingFile(userId, {
+        buffer: buffer.toString('base64'),
+        filename,
+        mimeType,
+        prompt,
+        timestamp: Date.now(),
+      });
+
+      await ctx.reply(
+        '📋 *JSONL file detected*\n\n' +
+        'Is this an OpenClaw/Claude Code transcript?\n\n' +
+        '_OpenClaw transcripts get optimized processing with ~95% smaller payloads._',
+        { reply_markup: openclawConfirmKeyboard(), parse_mode: 'Markdown' }
+      );
+      return;
+    }
 
     // Scan the file
     const result = await scanFile(apiKey, prompt, buffer, filename, mimeType);
